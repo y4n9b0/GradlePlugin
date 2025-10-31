@@ -1,0 +1,48 @@
+plugins {
+    id 'kotlin'
+    id 'java-gradle-plugin'
+    id 'com.gradle.plugin-publish' version '2.0.0'
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation "com.android.tools.build:gradle:8.13.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:2.2.20"
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+}
+
+group = 'io.github.y4n9b0'
+version = '1.0.0'
+
+/*
+ * 发布插件至 gradlePluginPortal:
+ * ./gradlew clean :flatDeps:publishPlugins
+ */
+gradlePlugin {
+    website = 'https://github.com/y4n9b0/GradlePlugin'
+    vcsUrl = 'https://github.com/y4n9b0/GradlePlugin'
+    plugins {
+        flatDepsPlugin {
+            // 在 app 模块需要通过 id 引用这个插件
+            id = 'io.github.y4n9b0.flatDeps'
+            // 实现这个插件的类的路径
+            implementationClass = 'y4n9b0.flatDeps.FlatDepsPlugin'
+            displayName = 'Gradle flatDeps plugin'
+            description = 'Gradle plugin to flat dependencies!'
+            tags.set(['dependence', 'flat'])
+        }
+    }
+}
+
+//apply from: "${rootDir}/gradle-plugin-mvn-publish.gradle"
