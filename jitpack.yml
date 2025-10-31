@@ -1,0 +1,4 @@
+# https://jitpack.io/docs/BUILDING/#custom-commands
+# https://dev.to/cicirello/how-to-configure-jitpack-for-recent-jdk-versions-4pek
+jdk:
+  - openjdk17

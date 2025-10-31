@@ -1,0 +1,40 @@
+plugins {
+    id 'kotlin'
+    id 'java-gradle-plugin'
+}
+
+dependencies {
+    implementation gradleApi()
+    implementation "com.android.tools.build:gradle:8.13.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:2.2.20"
+}
+
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17
+    }
+}
+
+gradlePlugin {
+    plugins {
+        version {
+            // 在 app 模块需要通过 id 引用这个插件
+            id = 'com.github.y4n9b0.flatDeps'
+            // 实现这个插件的类的路径
+            implementationClass = 'y4n9b0.flatDeps.FlatDepsPlugin'
+        }
+    }
+}
+
+ext {
+    releaseArtifactId = 'flatDeps'
+    releaseVersion = '1.0.0'
+}
+
+apply from: "${rootDir}/gradle-plugin-mvn-publish.gradle"

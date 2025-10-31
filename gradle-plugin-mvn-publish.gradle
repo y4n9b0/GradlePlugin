@@ -1,0 +1,58 @@
+/**
+ * https://docs.gradle.org/current/userguide/publishing_maven.html
+ * https://developer.android.google.cn/studio/build/maven-publish-plugin
+ * https://github.com/jitpack/android-example/blob/master/library/build.gradle
+ * https://docs.gradle.org/current/userguide/plugins.html
+ */
+apply plugin: 'maven-publish'
+
+group = 'com.github.y4n9b0'
+version = releaseVersion
+
+publishing {
+    publications {
+        pluginMaven(MavenPublication) {
+            // 如果不配置，则默认使用 module name
+            artifactId = releaseArtifactId
+
+            pom {
+                name.set(releaseArtifactId)
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            // 本地仓库
+            url = mavenLocal()  // ${USER_HOME}/.m2/repository
+
+//            // 远程仓库
+//            url = version.toString().endsWith("SNAPSHOT")
+//                    ? "http://artifactory.jd.com/plugins-snapshots-local"
+//                    : "http://artifactory.jd.com/plugins-releases-local"
+
+//            credentials {
+//                // 明文
+//                // username '1step2hell'
+//                // password 'hahaha'
+//
+//                // 环境变量
+//                // username System.getenv('USER_NAME')
+//                // password System.getenv('PASS_WORD')
+//
+//                /**
+//                 * 配置在本地文件中 ~/.gradle/gradle.properties
+//                 * or
+//                 * 通过 gradle 命令 -P 参数传递: gradle clean :plugin:publish -PUSER_NAME='1step2hell' -PPASS_WORD='hahaha'
+//                 */
+//                username "${USER_NAME}"
+//                password "${PASS_WORD}"
+//            }
+        }
+    }
+}
