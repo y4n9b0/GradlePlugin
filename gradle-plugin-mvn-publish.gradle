@@ -6,8 +6,9 @@
  */
 apply plugin: 'maven-publish'
 
-group = 'io.github.y4n9b0'
-version = '1.0.0'
+// define it in plugin module's build.gradle
+//group = 'io.github.y4n9b0'
+//version = '1.0.0'
 
 publishing {
     publications {

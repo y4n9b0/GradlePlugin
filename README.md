@@ -9,10 +9,10 @@ This plugin does exactly that — simple and clean.
 
 how to use
 --------
-* Add the plugin to your module’s build.gradle:
+* Add the plugin to module’s build.gradle:
     ```groovy
     plugins {
-        id 'io.github.y4n9b0.flatDeps' version "1.0.0"
+        id 'io.github.y4n9b0.flatDeps' version '1.0.0'
     }
     ```
 
@@ -34,26 +34,48 @@ how to use
     androidx.arch.core:core-common:2.2.0
     androidx.arch.core:core-runtime:2.2.0
     androidx.cardview:cardview:1.0.0
+    com.google.mlkit:barcode-scanning:17.3.0
+	    ├─ jni/arm64-v8a/libbarhopper_v3.so
+	    ├─ jni/armeabi-v7a/libbarhopper_v3.so
+	    ├─ jni/x86/libbarhopper_v3.so
+	    └─ jni/x86_64/libbarhopper_v3.so
+    com.google.mlkit:barcode-scanning-common:17.0.0
+    com.google.mlkit:common:18.11.0
+    com.google.mlkit:vision-common:17.3.0
+    com.google.mlkit:vision-interfaces:16.3.0
     ···
     ```
 
-Local Development & Test
+Development & Test
 --------
+* Modify the FlatDepsPlugin class as needed.
 * Apply the Gradle file in the flatDeps module:
   ```groovy
   apply from: "${rootDir}/gradle-plugin-mvn-publish.gradle"
   ```
-* Modify the FlatDepsPlugin class as needed.
-* Bump the plugin version in ${rootDir}/gradle-plugin-mvn-publish.gradle.
+* Bump the plugin version in the plugin module’s build.gradle.
 * Publish the plugin to your local Maven repository: 
   ```bash
   ./gradlew clean :flatDeps:publishToMavenLocal
   ```
-* In your app module, update the plugin dependency to use the new local version and verify the changes.
+* In your app module, update the plugin dependency to use the new local version and verify that it works as expected.
+  Make sure to include `mavenLocal()` in plugin repositories:
+  ```groovy
+  pluginManagement {
+    repositories {
+        mavenLocal()
+    }
+  }
+  ```
+* Once verified, keep only the changes to the FlatDepsPlugin class and the updated plugin version.
+* Finally, publish the plugin to the Gradle Plugin Portal:
+  ```bash
+  ./gradlew clean :flatDeps:publishPlugins
+  ```
 
 Todo
 --------
-* List .so files of each dependency (if present)
+* ~~List .so files of each dependency (if present)~~
 
 License
 --------

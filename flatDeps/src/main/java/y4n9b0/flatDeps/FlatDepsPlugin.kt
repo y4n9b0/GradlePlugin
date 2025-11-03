@@ -104,11 +104,37 @@ class FlatDepsPlugin : Plugin<Project> {
         val outFile = File(logDir, "$taskName.txt")
         if (outFile.exists()) outFile.delete()
 
-        configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
+        val deps = configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
             .sortedWith(compareBy({ it.module.id.group }, { it.module.id.name }, { it.module.id.version }))
-            .forEach { dep ->
-                val moduleId = dep.module.id
-                outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
+
+        deps.forEach { dep ->
+            val moduleId = dep.module.id
+            outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
+
+            // 遍历 artifacts 寻找 .so
+            dep.moduleArtifacts.forEach { artifact ->
+                val file = artifact.file
+                if (file.extension in listOf("aar", "jar")) {
+                    try {
+                        java.util.zip.ZipFile(file).use { zip ->
+                            val soFiles = zip.entries().asSequence()
+                                .filter { /*it.name.startsWith("jni/") &&*/ it.name.endsWith(".so") }
+                                .map { it.name/*.substringAfterLast("/")*/ }
+                                .toSet()
+                                .sorted()
+                            soFiles.forEachIndexed { index, so ->
+                                val prefix = when (index) {
+                                    soFiles.lastIndex -> "└─"
+                                    else -> "├─"
+                                }
+                                outFile.appendText("\t$prefix $so\n")
+                            }
+                        }
+                    } catch (e: Exception) {
+                        project.logger.warn("Failed to read artifact ${file.name}: ${e.message}")
+                    }
+                }
             }
+        }
     }
 }

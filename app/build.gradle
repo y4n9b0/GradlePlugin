@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-//    id 'io.github.y4n9b0.flatDeps' version "1.0.0"
+//    id 'io.github.y4n9b0.flatDeps' version '1.0.0'
 }
 
 android {
@@ -41,7 +41,6 @@ android {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ['*.jar', '*.aar'])
-//    implementation project(':lib')
     implementation 'androidx.core:core-ktx:1.17.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
@@ -50,6 +49,7 @@ dependencies {
     implementation 'com.github.q876625596:GenjiDialogV2:1.4.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.9.4'
+    implementation "com.google.mlkit:barcode-scanning:17.3.0"   // test .so
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.3.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'

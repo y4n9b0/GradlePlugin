@@ -25,15 +25,12 @@ compileTestKotlin {
 group = 'io.github.y4n9b0'
 version = '1.0.0'
 
-/*
- * 发布插件至 gradlePluginPortal:
- * ./gradlew clean :flatDeps:publishPlugins
- */
+// 发布插件至 gradlePluginPortal: ./gradlew clean :flatDeps:publishPlugins
 gradlePlugin {
     website = 'https://github.com/y4n9b0/GradlePlugin'
     vcsUrl = 'https://github.com/y4n9b0/GradlePlugin'
     plugins {
-        flatDepsPlugin {
+        flatDeps {
             // 在 app 模块需要通过 id 引用这个插件
             id = 'io.github.y4n9b0.flatDeps'
             // 实现这个插件的类的路径
