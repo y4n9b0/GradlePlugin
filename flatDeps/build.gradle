@@ -3,22 +3,17 @@ plugins {
     id 'com.gradle.plugin-publish' version '2.0.0'
 }
 
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
 dependencies {
     implementation gradleApi()
     implementation "com.android.tools.build:gradle:8.13.0"
     implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"
     implementation "org.jetbrains.kotlin:kotlin-reflect:2.2.20"
-}
-
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
-}
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17
-    }
 }
 
 group = 'io.github.y4n9b0'
