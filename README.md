@@ -49,10 +49,6 @@ how to use
 Development & Test
 --------
 * Modify the FlatDepsPlugin class as needed.
-* Apply the Gradle file in the flatDeps module:
-  ```groovy
-  apply from: "${rootDir}/gradle-plugin-mvn-publish.gradle"
-  ```
 * Bump the plugin version in the plugin module’s build.gradle.
 * Publish the plugin to your local Maven repository: 
   ```bash
@@ -67,7 +63,6 @@ Development & Test
     }
   }
   ```
-* Once verified, keep only the changes to the FlatDepsPlugin class and the updated plugin version.
 * Finally, publish the plugin to the Gradle Plugin Portal:
   ```bash
   ./gradlew clean :flatDeps:publishPlugins

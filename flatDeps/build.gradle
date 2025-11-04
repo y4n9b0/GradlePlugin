@@ -1,6 +1,5 @@
 plugins {
     id 'kotlin'
-    id 'java-gradle-plugin'
     id 'com.gradle.plugin-publish' version '2.0.0'
 }
 
@@ -41,5 +40,3 @@ gradlePlugin {
         }
     }
 }
-
-//apply from: "${rootDir}/gradle-plugin-mvn-publish.gradle"
