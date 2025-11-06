@@ -11,10 +11,12 @@ import org.gradle.api.tasks.TaskProvider
 import y4n9b0.flatDeps.AnsiColors.fg
 import y4n9b0.flatDeps.AnsiColors.styles
 import java.io.File
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class FlatDepsPlugin : Plugin<Project> {
-    override fun apply(project: Project) {
 
+    override fun apply(project: Project) {
         val allVariantTasks = mutableListOf<TaskProvider<*>>()
 
         // 1. 尝试 AGP 7+ 新 API
@@ -66,7 +68,7 @@ class FlatDepsPlugin : Plugin<Project> {
         return project.tasks.register(taskName) { task ->
             task.group = "dependency"
             task.description = "Flat all dependencies for variant $variantName"
-            task.doLast { writeDepsToFile(project, configuration, taskName) }
+            task.doLast { writeDepsToFile(project, configuration, variantName, taskName) }
         }
     }
 
@@ -89,14 +91,15 @@ class FlatDepsPlugin : Plugin<Project> {
         return project.tasks.register(taskName) { task ->
             task.group = "dependency"
             task.description = "Flat all dependencies for variant $variantName"
-            task.doLast { writeDepsToFile(project, configuration, taskName) }
+            task.doLast { writeDepsToFile(project, configuration, variantName, taskName) }
         }
     }
 
     private fun writeDepsToFile(
         project: Project,
         configuration: org.gradle.api.artifacts.Configuration,
-        taskName: String
+        variantName: String,
+        taskName: String,
     ) {
         val logDir = project.layout.buildDirectory.dir("outputs/logs").get().asFile
         if (!logDir.exists()) logDir.mkdirs()
@@ -104,37 +107,68 @@ class FlatDepsPlugin : Plugin<Project> {
         val outFile = File(logDir, "$taskName.txt")
         if (outFile.exists()) outFile.delete()
 
-        val deps = configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
+        // outFile.appendText(buildHeader(project, variantName))
+
+        configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
             .sortedWith(compareBy({ it.module.id.group }, { it.module.id.name }, { it.module.id.version }))
+            .forEach { dep ->
+                val moduleId = dep.module.id
+                outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
 
-        deps.forEach { dep ->
-            val moduleId = dep.module.id
-            outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
-
-            // 遍历 artifacts 寻找 .so
-            dep.moduleArtifacts.forEach { artifact ->
-                val file = artifact.file
-                if (file.extension in listOf("aar", "jar")) {
-                    try {
-                        java.util.zip.ZipFile(file).use { zip ->
-                            val soFiles = zip.entries().asSequence()
-                                .filter { /*it.name.startsWith("jni/") &&*/ it.name.endsWith(".so") }
-                                .map { it.name/*.substringAfterLast("/")*/ }
-                                .toSet()
-                                .sorted()
-                            soFiles.forEachIndexed { index, so ->
-                                val prefix = when (index) {
-                                    soFiles.lastIndex -> "└─"
-                                    else -> "├─"
+                // 遍历 artifacts 寻找 .so
+                dep.moduleArtifacts.forEach { artifact ->
+                    val file = artifact.file
+                    if (file.extension in listOf("aar", "jar")) {
+                        try {
+                            java.util.zip.ZipFile(file).use { zip ->
+                                val soFiles = zip.entries().asSequence()
+                                    .filter { /*it.name.startsWith("jni/") &&*/ it.name.endsWith(".so") }
+                                    .map { it.name/*.substringAfterLast("/")*/ }
+                                    .toSet()
+                                    .sorted()
+                                soFiles.forEachIndexed { index, so ->
+                                    val prefix = if (index == soFiles.lastIndex) "└─" else "├─"
+                                    outFile.appendText("\t$prefix $so\n")
                                 }
-                                outFile.appendText("\t$prefix $so\n")
                             }
+                        } catch (e: Exception) {
+                            project.logger.warn("Failed to read artifact ${file.name}: ${e.message}")
                         }
-                    } catch (e: Exception) {
-                        project.logger.warn("Failed to read artifact ${file.name}: ${e.message}")
                     }
                 }
             }
+    }
+
+    private fun buildHeader(project: Project, variantName: String): String {
+        val gitCommitId = fetchGitCommitId(project)
+        val generatedTime = LocalDateTime.now().format(
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss:SSS")
+        )
+        return buildString {
+            appendLine("Project       : ${project.rootProject.name}")
+            appendLine("Module        : ${project.name}")
+            appendLine("Variant       : $variantName")
+            appendLine("Git Commit ID : ${gitCommitId ?: "N/A"}")
+            appendLine("Generated at  : $generatedTime")
+            appendLine()
+        }
+    }
+
+    private fun fetchGitCommitId(project: Project): String? {
+        return try {
+            val gitDir = File(project.rootDir, ".git")
+            if (gitDir.exists()) {
+                // 获取 git commit id（如果有 .git 目录）
+                val process = ProcessBuilder("git", "rev-parse", "--short", "HEAD")
+                    .directory(project.rootDir)
+                    .redirectErrorStream(true)
+                    .start()
+                process.inputStream.bufferedReader().readText().trim()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 }
