@@ -7,7 +7,7 @@ Normally, running `./gradlew :${module}:dependencies` prints a full dependency t
 However, most of the time, we just want the final, flattened list of dependencies for each app variant.<br>
 This plugin does exactly that — simple and clean.
 
-how to use
+How to use
 --------
 * Add the plugin to module’s build.gradle:
     ```groovy
