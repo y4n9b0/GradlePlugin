@@ -1,19 +1,17 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-//    id 'io.github.y4n9b0.flatDeps' version '1.0.0'
+    id 'io.github.y4n9b0.flatDeps' version '1.0.0'
 }
 
 android {
     namespace 'y4n9b0.ttleosis.app'
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk { version = release(36) }
 
     defaultConfig {
         applicationId "y4n9b0.ttleosis.app"
-        minSdk 24
-        targetSdk 36
+        minSdk { version = release(24) }
+        targetSdk { version = release(36) }
         versionCode 1
         versionName "1.0"
 
