@@ -1,0 +1,145 @@
+name: Publish Gradle Plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      module_name:
+        type: string
+        description: Name of plugin module to release (e.g. flatDeps)
+        required: true
+      new_version:
+        type: string
+        description: New version number, like x.y.z
+        required: true
+      changelog:
+        type: string
+        description: Single line of details to prepend to CHANGELOG.md
+        required: true
+
+jobs:
+  bump-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master   # 保证 checkout 最新分支
+          fetch-depth: 0  # 必须 fetch 全部 commit，否则 tag 操作可能失败
+
+      - name: Validate module exists
+        run: |
+          MODULE_PATH="${{ github.event.inputs.module_name }}"
+          if [ ! -d "$MODULE_PATH" ]; then
+            echo "❌ Module '$MODULE_PATH' does not exist."
+            exit 1
+          fi
+          if [ ! -f "$MODULE_PATH/build.gradle" ] && [ ! -f "$MODULE_PATH/build.gradle.kts" ]; then
+            echo "❌ No build.gradle(.kts) found in module '$MODULE_PATH'"
+            exit 1
+          fi
+
+      - name: Read old version from module build.gradle
+        id: read_version
+        run: |
+          MODULE="${{ github.event.inputs.module_name }}"
+          GRADLE_FILE="$MODULE/build.gradle"
+          [ ! -f "$GRADLE_FILE" ] && GRADLE_FILE="$MODULE/build.gradle.kts"
+
+          old_version=$(grep -E "^[[:space:]]*version[[:space:]]*=" "$GRADLE_FILE" | sed -E "s/.*['\"]([^'\"]+)['\"].*/\1/")
+          echo "Detected old version: $old_version"
+          echo "old_version=$old_version" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MODULE="${{ github.event.inputs.module_name }}"
+          GRADLE_FILE="$MODULE/build.gradle"
+          [ ! -f "$GRADLE_FILE" ] && GRADLE_FILE="$MODULE/build.gradle.kts"
+
+          old_version=${{ steps.read_version.outputs.old_version }}
+          new_version=${{ github.event.inputs.new_version }}
+          changelog="${{ github.event.inputs.changelog }}"
+
+          echo "Bumping $MODULE: $old_version -> $new_version"
+          echo "Changelog: $changelog"
+
+          # 更新 CHANGELOG.md
+          # echo "# $new_version ($MODULE)" >> new_CHANGELOG.md
+          # echo >> new_CHANGELOG.md
+          # echo "- $changelog" >> new_CHANGELOG.md
+          # echo >> new_CHANGELOG.md
+          # cat CHANGELOG.md >> new_CHANGELOG.md
+          # mv new_CHANGELOG.md CHANGELOG.md
+
+          # 更新模块 version（支持单引号或双引号）
+          sed -i -E "s/^([[:space:]]*version[[:space:]]*=[[:space:]]*['\"])[^'\"]+(['\"])/\1${new_version}\2/" "$GRADLE_FILE"
+          echo "Using new_version=${new_version} on file $GRADLE_FILE"
+
+          git config --global user.name "Auto Release Bot"
+          git config --global user.email "release-bot@users.noreply.github.com"
+
+          git add -A
+          git commit -m "chore: [${MODULE}] bump version to ${new_version}"
+
+          TAG="${MODULE}-v${new_version}"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+          git tag "$TAG"
+
+      - name: Publish plugin to Gradle Portal
+        env:
+          GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
+          GRADLE_PUBLISH_SECRET: ${{ secrets.GRADLE_PUBLISH_SECRET }}
+        run: |
+          MODULE="${{ github.event.inputs.module_name }}"
+          ./gradlew ":${MODULE}:publishPlugins" \
+            --validate-only \
+            -Pgradle.publish.key=$GRADLE_PUBLISH_KEY \
+            -Pgradle.publish.secret=$GRADLE_PUBLISH_SECRET \
+            --no-daemon
+
+      - name: Push commit & tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          remote="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push "${remote}" HEAD:refs/heads/master
+          git push "${remote}" "refs/tags/$TAG"
+
+      - name: Create GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.bump_version.outputs.new_tag }}
+          name: Release ${{ steps.bump_version.outputs.new_tag }}
+          body: |
+            - Module: `${{ github.event.inputs.module_name }}`
+            - ${{ github.event.inputs.changelog }}
+          draft: false
+          prerelease: false
+
+      - name: Send Feishu notification
+        if: always()  # 不管前面成功还是失败都执行
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          MODULE_NAME: ${{ github.event.inputs.module_name }}
+          VERSION: ${{ github.event.inputs.new_version }}
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            TEXT="✅ Plugin release succeeded!\nModule: $MODULE_NAME\nVersion: $VERSION"
+          else
+            TEXT="❌ Plugin release failed!\nModule: $MODULE_NAME\nVersion: $VERSION\nCheck workflow logs for details."
+          fi
+
+          curl -s -X POST $FEISHU_WEBHOOK_URL \
+            -H 'Content-Type: application/json' \
+            -d '{
+              "msg_type": "text",
+              "content": {
+                "text": "'"$TEXT"'"
+              }
+            }'

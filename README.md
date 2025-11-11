@@ -63,7 +63,15 @@ Development & Test
     }
   }
   ```
-* Finally, publish the plugin to the Gradle Plugin Portal:
+* After verifying the plugin works locally, commit your changes.
+
+Publish
+--------
+* To validate a Plugin Portal publication (no upload):
+  ```bash
+  ./gradlew clean :flatDeps:publishPlugins --validate-only
+  ```
+* To publish to the Gradle Plugin Portal:
   ```bash
   ./gradlew clean :flatDeps:publishPlugins
   ```
