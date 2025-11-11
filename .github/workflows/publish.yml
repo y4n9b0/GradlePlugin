@@ -122,23 +122,46 @@ jobs:
           prerelease: false
 
       - name: Send Feishu notification
-        if: always()  # 不管前面成功还是失败都执行
+        if: always()
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           MODULE_NAME: ${{ github.event.inputs.module_name }}
           VERSION: ${{ github.event.inputs.new_version }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ "${{ job.status }}" == "success" ]; then
-            TEXT="✅ Plugin release succeeded!\nModule: $MODULE_NAME\nVersion: $VERSION"
+            TITLE="Plugin Release Succeeded"
+            COLOR="green"
+            CONTENT="Module: **$MODULE_NAME**\nVersion: **$VERSION**"
           else
-            TEXT="❌ Plugin release failed!\nModule: $MODULE_NAME\nVersion: $VERSION\nCheck workflow logs for details."
+            TITLE="Plugin Release Failed"
+            COLOR="red"
+            CONTENT="Module: **$MODULE_NAME**\nVersion: **$VERSION**\n[Click for more details >>]($GITHUB_RUN_URL)"
           fi
 
-          curl -s -X POST $FEISHU_WEBHOOK_URL \
+          curl -s -X POST "$FEISHU_WEBHOOK_URL" \
             -H 'Content-Type: application/json' \
             -d '{
-              "msg_type": "text",
-              "content": {
-                "text": "'"$TEXT"'"
+              "msg_type": "interactive",
+              "card": {
+                "config": {
+                  "wide_screen_mode": true
+                },
+                "header": {
+                  "title": {
+                    "tag": "plain_text",
+                    "content": "'"$TITLE"'"
+                  },
+                  "template": "'"$COLOR"'"
+                },
+                "elements": [
+                  {
+                    "tag": "div",
+                    "text": {
+                      "tag": "lark_md",
+                      "content": "'"$CONTENT"'"
+                    }
+                  }
+                ]
               }
             }'
