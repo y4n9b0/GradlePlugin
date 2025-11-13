@@ -3,10 +3,10 @@ package y4n9b0.flatDeps
 import com.android.build.api.variant.AndroidComponentsExtension
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.LibraryExtension
-import com.android.build.gradle.api.ApplicationVariant
-import com.android.build.gradle.api.LibraryVariant
+import org.gradle.api.NamedDomainObjectSet
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.tasks.TaskProvider
 import y4n9b0.flatDeps.AnsiColors.fg
 import y4n9b0.flatDeps.AnsiColors.styles
@@ -23,21 +23,30 @@ class FlatDepsPlugin : Plugin<Project> {
         val androidComponents = project.extensions.findByType(AndroidComponentsExtension::class.java)
         if (androidComponents != null) {
             androidComponents.onVariants { variant ->
-                registerFlatDepsForNewApi(project, variant)?.let { allVariantTasks.add(it) }
+                val variantName = variant.name.replaceFirstChar {
+                    if (it.isLowerCase()) it.titlecase() else it.toString()
+                }
+                registerFlatDeps(project, variantName)?.let { allVariantTasks.add(it) }
             }
         } else {
             // 2. 否则回退到旧 API
             project.plugins.withId("com.android.application") {
                 val application = project.extensions.findByType(AppExtension::class.java)!!
                 application.applicationVariants.all { variant ->
-                    registerFlatDepsForOldApi(project, variant)?.let { allVariantTasks.add(it) }
+                    val variantName = variant.name.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase() else it.toString()
+                    }
+                    registerFlatDeps(project, variantName)?.let { allVariantTasks.add(it) }
                 }
             }
 
             project.plugins.withId("com.android.library") {
                 val library = project.extensions.findByType(LibraryExtension::class.java)!!
                 library.libraryVariants.all { variant ->
-                    registerFlatDepsForOldApi(project, variant)?.let { allVariantTasks.add(it) }
+                    val variantName = variant.name.replaceFirstChar {
+                        if (it.isLowerCase()) it.titlecase() else it.toString()
+                    }
+                    registerFlatDeps(project, variantName)?.let { allVariantTasks.add(it) }
                 }
             }
         }
@@ -50,93 +59,77 @@ class FlatDepsPlugin : Plugin<Project> {
         }
     }
 
-    // AGP 7+ 新 API
-    private fun registerFlatDepsForNewApi(
+    private fun registerFlatDeps(
         project: Project,
-        variant: com.android.build.api.variant.Variant
+        variantName: String
     ): TaskProvider<*>? {
-        val variantName = variant.name.capitalize()
         val taskName = "flatDeps$variantName"
-
-        val configuration = project.configurations.findByName("${variant.name}CompileClasspath")
-            ?: project.configurations.findByName("${variant.name}Compile")
-        if (configuration == null) {
-            project.logger.error("${fg.red}No configuration found for ${styles.bold}:${project.name}:${variant.name}${styles.reset}")
+        val configurations = project.configurations.matching { config ->
+            config.isCanBeResolved
+                    && !config.isCanBeConsumed
+                    // 只关心编译/运行时依赖
+                    && (config.name.endsWith("${variantName}CompileClasspath", true) || config.name.endsWith("${variantName}RuntimeClasspath", true))
+                    // 过滤掉测试、lint、apiElements 等
+                    && !config.name.contains("Test", true)
+                    && !config.name.contains("Lint", true)
+                    && !config.name.contains("ApiElements", true)
+                    && !config.name.contains("RuntimeElements", true)
+                    && !config.name.contains("Metadata", true)
+        }
+        if (configurations.isEmpty()) {
+            project.logger.error("${fg.red}No valid configuration found for ${styles.bold}:${project.name}:${variantName}${styles.reset}")
             return null
         }
-
         return project.tasks.register(taskName) { task ->
             task.group = "dependency"
             task.description = "Flat all dependencies for variant $variantName"
-            task.doLast { writeDepsToFile(project, configuration, variantName, taskName) }
-        }
-    }
-
-    // AGP 4.x-6.x 旧 API
-    private fun registerFlatDepsForOldApi(project: Project, variant: Any): TaskProvider<*>? {
-        val variantName = when (variant) {
-            is ApplicationVariant -> variant.name
-            is LibraryVariant -> variant.name
-            else -> return null
-        }.capitalize()
-
-        val taskName = "flatDeps$variantName"
-        val configuration = project.configurations.findByName("${variantName.decapitalize()}CompileClasspath")
-            ?: project.configurations.findByName("${variantName.decapitalize()}Compile")
-        if (configuration == null) {
-            project.logger.error("${fg.red}No configuration found for ${styles.bold}:${project.name}:${variant.name}${styles.reset}")
-            return null
-        }
-
-        return project.tasks.register(taskName) { task ->
-            task.group = "dependency"
-            task.description = "Flat all dependencies for variant $variantName"
-            task.doLast { writeDepsToFile(project, configuration, variantName, taskName) }
+            task.doLast { writeDepsToFile(project, configurations, variantName, taskName) }
         }
     }
 
     private fun writeDepsToFile(
         project: Project,
-        configuration: org.gradle.api.artifacts.Configuration,
+        configurations: NamedDomainObjectSet<Configuration>,
         variantName: String,
         taskName: String,
     ) {
-        val logDir = project.layout.buildDirectory.dir("outputs/logs").get().asFile
-        if (!logDir.exists()) logDir.mkdirs()
+        val outDir = project.layout.buildDirectory.dir("outputs/dependencies").get().asFile
+        if (!outDir.exists()) outDir.mkdirs()
 
-        val outFile = File(logDir, "$taskName.txt")
+        val outFile = File(outDir, "flatDeps$variantName.txt")
         if (outFile.exists()) outFile.delete()
 
         // outFile.appendText(buildHeader(project, variantName))
+        configurations.flatMapTo(
+            sortedSetOf(
+                compareBy({ it.module.id.group }, { it.module.id.name }, { it.module.id.version })
+            )
+        ) { it.resolvedConfiguration.lenientConfiguration.allModuleDependencies }.forEach { dep ->
+            val moduleId = dep.module.id
+            outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
 
-        configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
-            .sortedWith(compareBy({ it.module.id.group }, { it.module.id.name }, { it.module.id.version }))
-            .forEach { dep ->
-                val moduleId = dep.module.id
-                outFile.appendText("${moduleId.group}:${moduleId.name}:${moduleId.version}\n")
-
-                // 遍历 artifacts 寻找 .so
-                dep.moduleArtifacts.forEach { artifact ->
-                    val file = artifact.file
-                    if (file.extension in listOf("aar", "jar")) {
-                        try {
-                            java.util.zip.ZipFile(file).use { zip ->
-                                val soFiles = zip.entries().asSequence()
-                                    .filter { /*it.name.startsWith("jni/") &&*/ it.name.endsWith(".so") }
-                                    .map { it.name/*.substringAfterLast("/")*/ }
-                                    .toSet()
-                                    .sorted()
-                                soFiles.forEachIndexed { index, so ->
-                                    val prefix = if (index == soFiles.lastIndex) "└─" else "├─"
-                                    outFile.appendText("\t$prefix $so\n")
-                                }
+            // 遍历 artifacts 寻找 .so
+            dep.moduleArtifacts.forEach { artifact ->
+                val file = artifact.file
+                if (file.extension in listOf("aar", "jar")) {
+                    try {
+                        java.util.zip.ZipFile(file).use { zip ->
+                            val soFiles = zip.entries().asSequence()
+                                .filter { /*it.name.startsWith("jni/") &&*/ it.name.endsWith(".so") }
+                                .map { it.name/*.substringAfterLast("/")*/ }
+                                .toSet()
+                                .sorted()
+                            soFiles.forEachIndexed { index, so ->
+                                val prefix = if (index == soFiles.lastIndex) "└─" else "├─"
+                                outFile.appendText("\t$prefix $so\n")
                             }
-                        } catch (e: Exception) {
-                            project.logger.warn("Failed to read artifact ${file.name}: ${e.message}")
                         }
+                    } catch (e: Exception) {
+                        project.logger.warn("Failed to read artifact ${file.name}: ${e.message}")
                     }
                 }
             }
+        }
     }
 
     private fun buildHeader(project: Project, variantName: String): String {

@@ -77,17 +77,6 @@ jobs:
           sed -i -E "s/^([[:space:]]*version[[:space:]]*=[[:space:]]*['\"])[^'\"]+(['\"])/\1${new_version}\2/" "$GRADLE_FILE"
           echo "Using new_version=${new_version} on file $GRADLE_FILE"
 
-          git config --global user.name "Auto Release Bot"
-          git config --global user.email "release-bot@users.noreply.github.com"
-
-          git add -A
-          git commit -m "chore: [${MODULE}] bump version to ${new_version}"
-
-          TAG="${MODULE}-v${new_version}"
-          echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "new_tag=$TAG" >> $GITHUB_OUTPUT
-          git tag "$TAG"
-
       - name: Publish plugin to Gradle Portal
         env:
           GRADLE_PUBLISH_KEY: ${{ secrets.GRADLE_PUBLISH_KEY }}
@@ -100,12 +89,43 @@ jobs:
             --no-daemon
 
       - name: Push commit & tag
+        id: push_tag
         env:
+          MODULE: ${{ github.event.inputs.module_name }}
+          new_version: ${{ github.event.inputs.new_version }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          TAG="${MODULE}-v${new_version}"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "new_tag=$TAG" >> $GITHUB_OUTPUT
+          
           remote="https://${GITHUB_ACTOR}:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push "${remote}" HEAD:refs/heads/master
-          git push "${remote}" "refs/tags/$TAG"
+          
+          git config --global user.name "Auto Release Bot"
+          git config --global user.email "release-bot@users.noreply.github.com"
+
+          git add -A
+          # 检查是否有改动
+          if git diff --cached --quiet; then
+            echo "No changes detected, skipping commit."
+          else
+            git commit -m "chore: [${MODULE}] bump version to ${new_version}"
+            git push "${remote}" HEAD:refs/heads/master
+          fi
+          
+          # 检查远程 tag 是否存在
+          if git ls-remote --exit-code "$remote" "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Remote tag '$TAG' already exists, skipping push."
+          else
+            # 检查本地 tag 是否存在
+            if git rev-parse "$TAG" >/dev/null 2>&1; then
+              echo "Local tag '$TAG' exists, skipping create"
+            else
+              git tag "$TAG"
+              echo "Created local tag '$TAG'."
+            fi
+            git push "${remote}" "refs/tags/$TAG"
+          fi
 
       - name: Create GitHub Release
         if: success()
@@ -113,8 +133,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.bump_version.outputs.new_tag }}
-          name: Release ${{ steps.bump_version.outputs.new_tag }}
+          tag_name: ${{ steps.push_tag.outputs.new_tag }}
+          name: Release ${{ steps.push_tag.outputs.new_tag }}
           body: |
             - Module: `${{ github.event.inputs.module_name }}`
             - ${{ github.event.inputs.changelog }}

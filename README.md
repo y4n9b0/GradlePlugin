@@ -1,7 +1,7 @@
 FlatDeps
 --------
 Output all the dependencies of Android application or library.<br>
-Requires Android Gradle Plugin (AGP) 4.x or higher.
+Requires Android Gradle Plugin (AGP) 7.x or higher.
 
 Normally, running `./gradlew :${module}:dependencies` prints a full dependency tree.<br>
 However, most of the time, we just want the final, flattened list of dependencies for each app variant.<br>
@@ -12,11 +12,11 @@ How to use
 * Add the plugin to module’s build.gradle:
     ```groovy
     plugins {
-        id 'io.github.y4n9b0.flatDeps' version '1.0.0'
+        id 'io.github.y4n9b0.flatDeps' version '1.0.1'
     }
     ```
 
-* Run the Gradle task to output dependencies into: ${module}/build/outputs/logs/flatDeps${variant}.txt
+* Run the Gradle task to output dependencies into: ${module}/build/outputs/dependencies/flatDeps${variant}.txt
     ```bash
     ./gradlew clean :${module}:flatDepsDebug
     ./gradlew clean :${module}:flatDepsRelease

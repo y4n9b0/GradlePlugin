@@ -17,7 +17,7 @@ dependencies {
 }
 
 group = 'io.github.y4n9b0'
-version = '1.0.0'
+version = '1.0.1'
 
 // 发布插件至 gradlePluginPortal: ./gradlew clean :flatDeps:publishPlugins
 gradlePlugin {

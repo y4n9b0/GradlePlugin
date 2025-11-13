@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    id 'io.github.y4n9b0.flatDeps' version '1.0.0'
+    id 'io.github.y4n9b0.flatDeps' version '1.+'
 }
 
 android {
