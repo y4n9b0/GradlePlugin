@@ -11,10 +11,10 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.TtleOsis"
+        android:theme="@style/Theme.GradlePlugin"
         tools:targetApi="31">
         <activity
-            android:name=".EmptyActivity"
+            android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="portrait">
             <intent-filter>

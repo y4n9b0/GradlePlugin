@@ -1,2 +1,2 @@
-# Don't touch the ttleosis code
--keep class y4n9b0.ttleosis.** { *; }
+# Don't touch the flatDeps code
+-keep class y4n9b0.flatDeps.** { *; }

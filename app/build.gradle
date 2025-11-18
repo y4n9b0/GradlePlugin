@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace 'y4n9b0.ttleosis.app'
+    namespace 'y4n9b0.flatDeps.app'
     compileSdk { version = release(36) }
 
     defaultConfig {
-        applicationId "y4n9b0.ttleosis.app"
+        applicationId "y4n9b0.flatDeps.app"
         minSdk { version = release(24) }
         targetSdk { version = release(36) }
         versionCode 1
@@ -44,7 +44,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2'
-    implementation 'com.github.q876625596:GenjiDialogV2:1.4.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.lifecycle:lifecycle-process:2.9.4'
     implementation "com.google.mlkit:barcode-scanning:17.3.0"   // test .so

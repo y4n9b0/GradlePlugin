@@ -1,4 +1,4 @@
-package y4n9b0.ttleosis.app
+package y4n9b0.flatDeps.app
 
 import android.app.ActivityManager
 import android.app.Application
